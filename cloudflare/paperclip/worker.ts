@@ -1,0 +1,59 @@
+import { Container, getContainer } from "@cloudflare/containers";
+
+export interface Env {
+  PAPERCLIP: DurableObjectNamespace<PaperclipContainer>;
+  DATABASE_URL: string;
+  BETTER_AUTH_SECRET: string;
+  PAPERCLIP_AGENT_JWT_SECRET: string;
+  PAPERCLIP_SECRETS_MASTER_KEY: string;
+  AWS_ACCESS_KEY_ID: string;
+  AWS_SECRET_ACCESS_KEY: string;
+  PAPERCLIP_DEPLOYMENT_MODE: string;
+  PAPERCLIP_DEPLOYMENT_EXPOSURE: string;
+  PAPERCLIP_AUTH_BASE_URL_MODE: string;
+  PAPERCLIP_AUTH_PUBLIC_BASE_URL: string;
+  PAPERCLIP_AUTH_DISABLE_SIGN_UP: string;
+  PAPERCLIP_SECRETS_STRICT_MODE: string;
+  PAPERCLIP_DB_BACKUP_ENABLED: string;
+  PAPERCLIP_STORAGE_PROVIDER: string;
+  PAPERCLIP_STORAGE_S3_BUCKET: string;
+  PAPERCLIP_STORAGE_S3_REGION: string;
+  PAPERCLIP_STORAGE_S3_ENDPOINT: string;
+  PAPERCLIP_STORAGE_S3_FORCE_PATH_STYLE: string;
+}
+
+export class PaperclipContainer extends Container<Env> {
+  defaultPort = 3100;
+  sleepAfter = "30m";
+  enableInternet = true;
+
+  constructor(ctx: ConstructorParameters<typeof Container<Env>>[0], env: Env) {
+    super(ctx, env);
+    this.envVars = {
+      DATABASE_URL: this.env.DATABASE_URL,
+      BETTER_AUTH_SECRET: this.env.BETTER_AUTH_SECRET,
+      PAPERCLIP_AGENT_JWT_SECRET: this.env.PAPERCLIP_AGENT_JWT_SECRET,
+      PAPERCLIP_SECRETS_MASTER_KEY: this.env.PAPERCLIP_SECRETS_MASTER_KEY,
+      AWS_ACCESS_KEY_ID: this.env.AWS_ACCESS_KEY_ID,
+      AWS_SECRET_ACCESS_KEY: this.env.AWS_SECRET_ACCESS_KEY,
+      PAPERCLIP_DEPLOYMENT_MODE: this.env.PAPERCLIP_DEPLOYMENT_MODE,
+      PAPERCLIP_DEPLOYMENT_EXPOSURE: this.env.PAPERCLIP_DEPLOYMENT_EXPOSURE,
+      PAPERCLIP_AUTH_BASE_URL_MODE: this.env.PAPERCLIP_AUTH_BASE_URL_MODE,
+      PAPERCLIP_AUTH_PUBLIC_BASE_URL: this.env.PAPERCLIP_AUTH_PUBLIC_BASE_URL,
+      PAPERCLIP_AUTH_DISABLE_SIGN_UP: this.env.PAPERCLIP_AUTH_DISABLE_SIGN_UP,
+      PAPERCLIP_SECRETS_STRICT_MODE: this.env.PAPERCLIP_SECRETS_STRICT_MODE,
+      PAPERCLIP_DB_BACKUP_ENABLED: this.env.PAPERCLIP_DB_BACKUP_ENABLED,
+      PAPERCLIP_STORAGE_PROVIDER: this.env.PAPERCLIP_STORAGE_PROVIDER,
+      PAPERCLIP_STORAGE_S3_BUCKET: this.env.PAPERCLIP_STORAGE_S3_BUCKET,
+      PAPERCLIP_STORAGE_S3_REGION: this.env.PAPERCLIP_STORAGE_S3_REGION,
+      PAPERCLIP_STORAGE_S3_ENDPOINT: this.env.PAPERCLIP_STORAGE_S3_ENDPOINT,
+      PAPERCLIP_STORAGE_S3_FORCE_PATH_STYLE: this.env.PAPERCLIP_STORAGE_S3_FORCE_PATH_STYLE,
+    };
+  }
+}
+
+export default {
+  fetch(request: Request, env: Env): Promise<Response> {
+    return getContainer(env.PAPERCLIP, "quiknation-production").fetch(request);
+  },
+} satisfies ExportedHandler<Env>;

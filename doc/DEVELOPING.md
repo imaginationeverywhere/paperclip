@@ -20,6 +20,7 @@ Current implementation status:
 GitHub Actions owns `pnpm-lock.yaml`.
 
 - Do not commit `pnpm-lock.yaml` in pull requests.
+- Exception authorized for `katherine/quiknation-paperclip-container-20261006`: commit the reviewed rollout dependency lockfile so PR and production installs use `--frozen-lockfile`. Other branches retain the policy above.
 - Pull request CI validates dependency resolution when manifests change.
 - Pushes to `master` regenerate `pnpm-lock.yaml` with `pnpm install --lockfile-only --no-frozen-lockfile`, commit it back if needed, and then run verification with `--frozen-lockfile`.
 

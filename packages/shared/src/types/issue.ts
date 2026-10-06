@@ -1,4 +1,4 @@
-import type { IssueOriginKind, IssuePriority, IssueStatus } from "../constants.js";
+import type { IssueOriginKind, IssuePriority, IssueSourceEnv, IssueStatus } from "../constants.js";
 import type { Goal } from "./goal.js";
 import type { Project, ProjectWorkspace } from "./project.js";
 import type { ExecutionWorkspace, IssueExecutionWorkspaceSettings } from "./workspace-runtime.js";
@@ -123,6 +123,7 @@ export interface Issue {
   originRunId?: string | null;
   requestDepth: number;
   billingCode: string | null;
+  source_env?: IssueSourceEnv | null;
   assigneeAdapterOverrides: IssueAssigneeAdapterOverrides | null;
   executionWorkspaceId: string | null;
   executionWorkspacePreference: string | null;

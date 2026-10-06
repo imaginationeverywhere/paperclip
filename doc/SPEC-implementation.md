@@ -501,6 +501,10 @@ Server behavior:
 2. if updated row count is 0, return `409` with current owner/status
 3. successful checkout sets `assignee_agent_id`, `status = in_progress`, and `started_at`
 
+### 10.4.2 Issue source environment attribution (2026-10-06 addendum)
+
+Issue creation accepts optional `source_env` (`production`, `staging`, or `develop`). Omitted or null attribution stays null. The issue service persists it atomically as a company-scoped reserved `source_env:<value>` label and exposes it in create/list/get responses. The create activity event includes the supplied value. PATCH omits this field, label edits preserve it, and reserved source labels cannot be created, replaced, attached to other issues or deleted through public label operations. No schema migration is required. Callers must supply the actual originating environment; Paperclip does not infer it from the production deployment.
+
 ## 10.5 Projects
 
 - `GET /companies/:companyId/projects`

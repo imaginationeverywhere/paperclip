@@ -22,6 +22,7 @@ import {
   projects,
 } from "@paperclipai/db";
 import { extractAgentMentionIds, extractProjectMentionIds, isUuidLike } from "@paperclipai/shared";
+import type { IssueSourceEnv } from "@paperclipai/shared";
 import { conflict, notFound, unprocessable } from "../errors.js";
 import {
   defaultIssueExecutionWorkspaceSettingsForProject,
@@ -92,7 +93,11 @@ type IssueActiveRunRow = {
   finishedAt: Date | null;
   createdAt: Date;
 };
-type IssueWithLabels = IssueRow & { labels: IssueLabelRow[]; labelIds: string[] };
+type IssueWithLabels = IssueRow & {
+  labels: IssueLabelRow[];
+  labelIds: string[];
+  source_env: IssueSourceEnv | null;
+};
 type IssueWithLabelsAndRun = IssueWithLabels & { activeRun: IssueActiveRunRow | null };
 type IssueUserCommentStats = {
   issueId: string;
@@ -114,6 +119,7 @@ type ProjectGoalReader = Pick<Db, "select">;
 type DbReader = Pick<Db, "select">;
 type IssueCreateInput = Omit<typeof issues.$inferInsert, "companyId"> & {
   labelIds?: string[];
+  source_env?: IssueSourceEnv | null;
   inheritExecutionWorkspaceFromIssueId?: string | null;
 };
 
@@ -473,10 +479,16 @@ async function withIssueLabels(dbOrTx: any, rows: IssueRow[]): Promise<IssueWith
   const labelsByIssueId = await labelMapForIssues(dbOrTx, rows.map((row) => row.id));
   return rows.map((row) => {
     const issueLabels = labelsByIssueId.get(row.id) ?? [];
+    const sourceEnvLabel = issueLabels.find((label) =>
+      /^source_env:(production|staging|develop)$/.test(label.name),
+    );
     return {
       ...row,
       labels: issueLabels,
       labelIds: issueLabels.map((label) => label.id),
+      source_env: sourceEnvLabel
+        ? (sourceEnvLabel.name.slice("source_env:".length) as IssueSourceEnv)
+        : null,
     };
   });
 }
@@ -1080,7 +1092,7 @@ export function issueService(db: Db) {
       companyId: string,
       data: IssueCreateInput,
     ) => {
-      const { labelIds: inputLabelIds, inheritExecutionWorkspaceFromIssueId, ...issueData } = data;
+      const { labelIds: inputLabelIds, source_env: sourceEnv, inheritExecutionWorkspaceFromIssueId, ...issueData } = data;
       const isolatedWorkspacesEnabled = (await instanceSettings.getExperimental()).enableIsolatedWorkspaces;
       if (!isolatedWorkspacesEnabled) {
         delete issueData.executionWorkspaceId;
@@ -1220,9 +1232,25 @@ export function issueService(db: Db) {
         }
 
         const [issue] = await tx.insert(issues).values(values).returning();
-        if (inputLabelIds) {
-          await syncIssueLabels(issue.id, companyId, inputLabelIds, tx);
+        const nextLabelIds = [...(inputLabelIds ?? [])];
+        await assertValidLabelIds(companyId, nextLabelIds, tx);
+        if (nextLabelIds.length) {
+          const requested = await tx.select().from(labels).where(inArray(labels.id, nextLabelIds));
+          if (requested.some((label) => label.name.startsWith("source_env:"))) {
+            throw unprocessable("Use source_env at issue creation instead of reserved source_env labels");
+          }
         }
+        if (sourceEnv) {
+          const name = `source_env:${sourceEnv}`;
+          const [createdLabel] = await tx.insert(labels).values({ companyId, name, color: "#64748b" })
+            .onConflictDoNothing({ target: [labels.companyId, labels.name] }).returning();
+          const sourceLabel = createdLabel ?? await tx.select().from(labels)
+            .where(and(eq(labels.companyId, companyId), eq(labels.name, name)))
+            .then((rows) => rows[0]);
+          if (!sourceLabel) throw new Error("Unable to persist issue source_env");
+          nextLabelIds.push(sourceLabel.id);
+        }
+        await syncIssueLabels(issue.id, companyId, nextLabelIds, tx);
         const [enriched] = await withIssueLabels(tx, [issue]);
         return enriched;
       });
@@ -1326,7 +1354,18 @@ export function issueService(db: Db) {
           .then((rows) => rows[0] ?? null);
         if (!updated) return null;
         if (nextLabelIds !== undefined) {
-          await syncIssueLabels(updated.id, existing.companyId, nextLabelIds, tx);
+          await assertValidLabelIds(existing.companyId, nextLabelIds, tx);
+          const currentLabels = (await labelMapForIssues(tx, [id])).get(id) ?? [];
+          const sourceLabelIds = new Set(currentLabels
+            .filter((label) => label.name.startsWith("source_env:"))
+            .map((label) => label.id));
+          if (nextLabelIds.length) {
+            const requested = await tx.select().from(labels).where(inArray(labels.id, nextLabelIds));
+            if (requested.some((label) => label.name.startsWith("source_env:") && !sourceLabelIds.has(label.id))) {
+              throw unprocessable("Issue source_env is set only at creation");
+            }
+          }
+          await syncIssueLabels(updated.id, existing.companyId, [...nextLabelIds, ...sourceLabelIds], tx);
         }
         const [enriched] = await withIssueLabels(tx, [updated]);
         return enriched;
@@ -1602,6 +1641,9 @@ export function issueService(db: Db) {
         .then((rows) => rows[0] ?? null),
 
     createLabel: async (companyId: string, data: Pick<typeof labels.$inferInsert, "name" | "color">) => {
+      if (data.name.trim().startsWith("source_env:")) {
+        throw unprocessable("source_env labels are reserved for issue creation");
+      }
       const [created] = await db
         .insert(labels)
         .values({
@@ -1613,12 +1655,17 @@ export function issueService(db: Db) {
       return created;
     },
 
-    deleteLabel: async (id: string) =>
-      db
+    deleteLabel: async (id: string) => {
+      const label = await db.select().from(labels).where(eq(labels.id, id)).then((rows) => rows[0]);
+      if (label?.name.startsWith("source_env:")) {
+        throw unprocessable("source_env labels preserve issue provenance and cannot be deleted");
+      }
+      return db
         .delete(labels)
         .where(eq(labels.id, id))
         .returning()
-        .then((rows) => rows[0] ?? null),
+        .then((rows) => rows[0] ?? null);
+    },
 
     listComments: async (
       issueId: string,

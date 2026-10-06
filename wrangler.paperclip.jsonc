@@ -1,0 +1,48 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "quiknation-paperclip",
+  "account_id": "4682eae9d50da54644c8f895ddad984f",
+  "main": "cloudflare/paperclip/worker.ts",
+  "compatibility_date": "2026-10-05",
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "containers": [
+    {
+      "class_name": "PaperclipContainer",
+      "image": "./Dockerfile",
+      "instance_type": "basic",
+      "max_instances": 1
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      { "name": "PAPERCLIP", "class_name": "PaperclipContainer" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["PaperclipContainer"] }
+  ],
+  "vars": {
+    "PAPERCLIP_DEPLOYMENT_MODE": "authenticated",
+    "PAPERCLIP_DEPLOYMENT_EXPOSURE": "public",
+    "PAPERCLIP_AUTH_BASE_URL_MODE": "explicit",
+    "PAPERCLIP_AUTH_DISABLE_SIGN_UP": "true",
+    "PAPERCLIP_SECRETS_STRICT_MODE": "true",
+    "PAPERCLIP_DB_BACKUP_ENABLED": "false",
+    "PAPERCLIP_STORAGE_PROVIDER": "s3",
+    "PAPERCLIP_STORAGE_S3_BUCKET": "quiknation-paperclip",
+    "PAPERCLIP_STORAGE_S3_REGION": "auto",
+    "PAPERCLIP_STORAGE_S3_ENDPOINT": "https://4682eae9d50da54644c8f895ddad984f.r2.cloudflarestorage.com",
+    "PAPERCLIP_STORAGE_S3_FORCE_PATH_STYLE": "true"
+  },
+  "secrets": {
+    "required": [
+      "DATABASE_URL",
+      "BETTER_AUTH_SECRET",
+      "PAPERCLIP_AGENT_JWT_SECRET",
+      "PAPERCLIP_SECRETS_MASTER_KEY",
+      "AWS_ACCESS_KEY_ID",
+      "AWS_SECRET_ACCESS_KEY"
+    ]
+  }
+}
