@@ -33,7 +33,7 @@ write_secret_binding 'quik-nation/quiknation/paperclip/PAPERCLIP_SECRETS_MASTER_
 write_secret_binding 'quik-nation/quiknation/paperclip/R2_ACCESS_KEY_ID' 'AWS_ACCESS_KEY_ID'
 write_secret_binding 'quik-nation/quiknation/paperclip/R2_SECRET_ACCESS_KEY' 'AWS_SECRET_ACCESS_KEY'
 aws secretsmanager get-secret-value \
-  --secret-id 'quik-nation/shared/CLOUDFLARE_CONTAINERS_TOKEN' \
+  --secret-id 'quik-nation/quiknation/production/CLOUDFLARE_API_TOKEN' \
   --query SecretString --output text > "$secret_dir/cloudflare-token"
 CLOUDFLARE_API_TOKEN="$(cat "$secret_dir/cloudflare-token")"
 export CLOUDFLARE_API_TOKEN

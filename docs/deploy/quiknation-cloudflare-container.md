@@ -70,7 +70,9 @@ The deploy script reads the following existing names only after the operator aut
 | `quik-nation/quiknation/paperclip/PAPERCLIP_SECRETS_MASTER_KEY` | `PAPERCLIP_SECRETS_MASTER_KEY` |
 | `quik-nation/quiknation/paperclip/R2_ACCESS_KEY_ID` | `AWS_ACCESS_KEY_ID` |
 | `quik-nation/quiknation/paperclip/R2_SECRET_ACCESS_KEY` | `AWS_SECRET_ACCESS_KEY` |
-| `quik-nation/shared/CLOUDFLARE_CONTAINERS_TOKEN` | Deploy-process `CLOUDFLARE_API_TOKEN` only |
+| `quik-nation/quiknation/production/CLOUDFLARE_API_TOKEN` | Deploy-process `CLOUDFLARE_API_TOKEN` only |
+
+The first production deploy (run 37522471465) failed at Worker creation: `quik-nation/shared/CLOUDFLARE_CONTAINERS_TOKEN` can manage Containers but has no Workers Scripts access. On 2026-10-06 Mo approved switching the deploy token to the same-tenant `quik-nation/quiknation/production/CLOUDFLARE_API_TOKEN` (Workers Scripts + Containers). Live verification after the change: the deploy role's inline policy `paperclip-deploy-secrets-read` grants `secretsmanager:GetSecretValue` on exactly seven names: the six `quik-nation/quiknation/paperclip/*` names above plus `quik-nation/quiknation/production/CLOUDFLARE_API_TOKEN`. The obsolete `quik-nation/shared/CLOUDFLARE_CONTAINERS_TOKEN` grant was removed, so the role can no longer read the shared Containers token.
 
 The two R2 names above are the only approved R2 credentials. Do not substitute a shared R2 credential, create keys/IAM, or widen access. Secret values never belong in Git, GitHub secrets, artifacts, or logs. During a future authorized deployment, the script uses a unique restrictive runner directory, writes the six runtime bindings to a mode-0600 secrets file, and removes temporary files on success or failure. AWS OIDC session credentials are not forwarded to the Container.
 
