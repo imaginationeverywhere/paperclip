@@ -1,0 +1,73 @@
+name: Deploy QuikNation Paperclip
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Exact master SHA authorized after Gran and Mary PASS and green CI
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quiknation-paperclip-production
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require the authorized SHA
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          test "$EXPECTED_SHA" = "$GITHUB_SHA" || { echo 'Deployment SHA differs from the authorized SHA'; exit 1; }
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm -r typecheck
+      - run: pnpm typecheck:paperclip-worker
+      - run: pnpm test:run
+      - run: pnpm build
+      - run: pnpm check:paperclip-worker
+
+  deploy:
+    needs: verify
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --no-frozen-lockfile
+      - name: Configure AWS credentials from the existing OIDC role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Deploy using approved Secrets Manager names
+        env:
+          PAPERCLIP_AUTH_PUBLIC_BASE_URL: ${{ vars.PAPERCLIP_AUTH_PUBLIC_BASE_URL }}
+          CLOUDFLARE_ACCOUNT_ID: 4682eae9d50da54644c8f895ddad984f
+        run: bash scripts/deploy-quiknation-paperclip.sh

@@ -1034,6 +1034,7 @@ export function issueRoutes(
     }
 
     const actor = getActorInfo(req);
+    const sourceEnv = req.body.source_env;
     const issue = await svc.create(companyId, {
       ...req.body,
       createdByAgentId: actor.agentId,
@@ -1049,7 +1050,11 @@ export function issueRoutes(
       action: "issue.created",
       entityType: "issue",
       entityId: issue.id,
-      details: { title: issue.title, identifier: issue.identifier },
+      details: {
+        title: issue.title,
+        identifier: issue.identifier,
+        ...(sourceEnv ? { source_env: sourceEnv } : {}),
+      },
     });
 
     void queueIssueAssignmentWakeup({

@@ -8,3 +8,8 @@ coverage
 data
 tmp
 *.log
+.env*
+**/.env*
+memory
+.wrangler
+**/.wrangler

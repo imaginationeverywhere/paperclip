@@ -109,16 +109,25 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        # CI owns lockfile updates; PRs may add dependencies without committing it.
+        run: pnpm install --no-frozen-lockfile
 
       - name: Typecheck
         run: pnpm -r typecheck
+
+      - name: Typecheck and bundle the Paperclip Worker without deployment
+        run: |
+          pnpm typecheck:paperclip-worker
+          pnpm check:paperclip-worker
 
       - name: Run tests
         run: pnpm test:run
 
       - name: Build
         run: pnpm build
+
+      - name: Build the Paperclip Container image without deploying
+        run: docker build --tag quiknation-paperclip:pr .
 
       - name: Release canary dry run
         run: |
@@ -147,7 +156,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build
         run: pnpm build

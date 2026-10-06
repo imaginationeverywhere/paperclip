@@ -12,6 +12,8 @@
     "dev:ui": "pnpm --filter @paperclipai/ui dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
+    "typecheck:paperclip-worker": "tsc -p cloudflare/paperclip/tsconfig.json",
+    "check:paperclip-worker": "wrangler deploy --config wrangler.paperclip.jsonc --dry-run --containers-rollout=none",
     "test": "vitest",
     "test:run": "vitest run",
     "db:generate": "pnpm --filter @paperclipai/db generate",
@@ -38,11 +40,14 @@
     "metrics:paperclip-commits": "tsx scripts/paperclip-commit-metrics.ts"
   },
   "devDependencies": {
+    "@cloudflare/containers": "^0.3.7",
+    "@cloudflare/workers-types": "5.20261006.1",
     "@playwright/test": "^1.58.2",
     "cross-env": "^10.1.0",
     "esbuild": "^0.27.3",
     "typescript": "^5.7.3",
-    "vitest": "^3.0.5"
+    "vitest": "^3.0.5",
+    "wrangler": "4.147.0"
   },
   "engines": {
     "node": ">=20"
