@@ -4,7 +4,9 @@ The `quiknation-paperclip` Worker routes all requests to one named production Co
 
 ## Review and deployment gates
 
-This change prepares deployment; it does not deploy anything. Before deployment, Gran and Mary must both PASS the re-pinned PR head through live Orca, and CI must be green. The operator then handles merge and deployment.
+This change prepares deployment; it does not deploy anything. The counted independent review gate requires both **Mary (Cursor)** and **Katherine (Codex)** to PASS the same re-pinned PR head through live Orca, and CI must be green. Request **Gran** as an additional reviewer, but Gran feedback does **not** satisfy the independent review gate for this commit metadata. The operator then handles merge and deployment.
+
+The latest fixes were built in the Codex harness while Git author and committer metadata inherited **Claude Opus 4.8**. Mary's clarification of that metadata determines the counted Mary/Katherine reviewer assignment. Git identity is unchanged; do not spoof identity or rewrite metadata to change reviewer eligibility. This document records the required reviewers, not received PASS verdicts.
 
 `Deploy QuikNation Paperclip` is manual-only and runs only on `master`. Supply the full authorized master commit as `expected_sha`; the workflow rejects a mismatch with the selected workflow revision. It reruns repository checks and the Worker bundle check before the `production` environment job can assume an approved AWS OIDC role. Configure protection on that environment before using it; an environment name alone does not establish an approval gate. The workflow does not configure IAM, mint keys, provision a database, create a bucket, or delete bucket contents.
 
