@@ -33,7 +33,7 @@ const bindings = JSON.parse(fs.readFileSync(file, 'utf8'));
 if ((fs.statSync(file).mode & 0o777) !== 0o600) process.exit(92);
 if (bindings.AWS_ACCESS_KEY_ID !== 'TEST_ONLY_quik-nation/quiknation/paperclip/R2_ACCESS_KEY_ID') process.exit(93);
 if (bindings.AWS_SECRET_ACCESS_KEY !== 'TEST_ONLY_quik-nation/quiknation/paperclip/R2_SECRET_ACCESS_KEY') process.exit(94);
-if (process.env.CLOUDFLARE_API_TOKEN !== 'TEST_ONLY_quik-nation/shared/CLOUDFLARE_CONTAINERS_TOKEN') process.exit(95);
+if (process.env.CLOUDFLARE_API_TOKEN !== 'TEST_ONLY_quik-nation/quiknation/production/CLOUDFLARE_API_TOKEN') process.exit(95);
 fs.writeFileSync(process.env.DEPLOY_RECEIPT, JSON.stringify({ args, bindings: Object.keys(bindings) }));
 process.exit(process.env.FAIL_DEPLOY === '1' ? 24 : 0);
 `, { mode: 0o700 });
@@ -59,7 +59,7 @@ describe("Paperclip deploy script using fake executables only", () => {
       "quik-nation/quiknation/paperclip/DATABASE_URL", "quik-nation/quiknation/paperclip/BETTER_AUTH_SECRET",
       "quik-nation/quiknation/paperclip/PAPERCLIP_AGENT_JWT_SECRET", "quik-nation/quiknation/paperclip/PAPERCLIP_SECRETS_MASTER_KEY",
       "quik-nation/quiknation/paperclip/R2_ACCESS_KEY_ID", "quik-nation/quiknation/paperclip/R2_SECRET_ACCESS_KEY",
-      "quik-nation/shared/CLOUDFLARE_CONTAINERS_TOKEN",
+      "quik-nation/quiknation/production/CLOUDFLARE_API_TOKEN",
     ]);
     const receipt = JSON.parse(readFileSync(join(temp, "receipt"), "utf8"));
     expect(receipt.args.slice(0, 5)).toEqual(["exec", "wrangler", "deploy", "--config", "wrangler.paperclip.jsonc"]);
