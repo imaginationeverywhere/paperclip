@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+
+const config = JSON.parse(readFileSync(new URL("../../../wrangler.paperclip.jsonc", import.meta.url), "utf8"));
 
 const mocks = vi.hoisted(() => ({ getContainer: vi.fn(), fetch: vi.fn() }));
 vi.mock("@cloudflare/containers", () => ({
@@ -33,6 +36,7 @@ describe("Paperclip Container", () => {
       AWS_ACCESS_KEY_ID: "test-only-r2-id", AWS_SECRET_ACCESS_KEY: "test-only-r2-secret",
       PAPERCLIP_DEPLOYMENT_MODE: "authenticated", PAPERCLIP_DEPLOYMENT_EXPOSURE: "public",
       PAPERCLIP_AUTH_BASE_URL_MODE: "explicit", PAPERCLIP_AUTH_PUBLIC_BASE_URL: "https://paperclip.example",
+      PAPERCLIP_AUTH_DISABLE_SIGN_UP: config.vars.PAPERCLIP_AUTH_DISABLE_SIGN_UP,
       PAPERCLIP_SECRETS_STRICT_MODE: "true", PAPERCLIP_DB_BACKUP_ENABLED: "false",
       PAPERCLIP_STORAGE_PROVIDER: "s3", PAPERCLIP_STORAGE_S3_BUCKET: "quiknation-paperclip",
       PAPERCLIP_STORAGE_S3_REGION: "auto", PAPERCLIP_STORAGE_S3_ENDPOINT: "https://test-only.r2.cloudflarestorage.com",
@@ -40,9 +44,16 @@ describe("Paperclip Container", () => {
     };
     const container = new PaperclipContainer({} as any, env as any);
     expect(container.envVars).toEqual(env);
+    expect(container.envVars.PAPERCLIP_AUTH_DISABLE_SIGN_UP).toBe("true");
     expect(container.defaultPort).toBe(3100);
     expect(container.sleepAfter).toBe("30m");
     expect(container.enableInternet).toBe(true);
     expect(container.envVars).not.toHaveProperty("AWS_SESSION_TOKEN");
+  });
+
+  it("uses only bucket-scoped S3 storage without an unused native R2 binding", () => {
+    expect(config).not.toHaveProperty("r2_buckets");
+    expect(config.vars.PAPERCLIP_STORAGE_PROVIDER).toBe("s3");
+    expect(config.vars.PAPERCLIP_STORAGE_S3_BUCKET).toBe("quiknation-paperclip");
   });
 });

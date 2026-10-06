@@ -1,6 +1,6 @@
 # QuikNation Paperclip Cloudflare Container
 
-The `quiknation-paperclip` Worker routes all requests to one named production Container, `quiknation-production`, on port 3100. `max_instances` is 1, the instance type is `basic`, and the idle timeout is 30 minutes. Deployment uses the root Dockerfile. Durable data belongs in the existing Neon Paperclip database and the private R2 bucket `quiknation-paperclip`; Container disk is ephemeral. The Worker R2 binding and the Container S3 bucket setting both name only `quiknation-paperclip`.
+The `quiknation-paperclip` Worker routes all requests to one named production Container, `quiknation-production`, on port 3100. `max_instances` is 1, the instance type is `basic`, and the idle timeout is 30 minutes. Deployment uses the root Dockerfile. Durable data belongs in the existing Neon Paperclip database and the private R2 bucket `quiknation-paperclip`; Container disk is ephemeral. Only the Container's existing S3 provider accesses R2, and its bucket setting stays `quiknation-paperclip`. The Worker has no native R2 bucket binding.
 
 ## Review and deployment gates
 
@@ -17,6 +17,19 @@ Required existing repository/environment variables:
 | `PAPERCLIP_AUTH_PUBLIC_BASE_URL` | Final HTTPS Paperclip origin, with no credentials, path, query or fragment |
 
 Public exposure requires explicit auth base-URL mode. The workflow supplies the validated public URL to Wrangler; the Container forwards it into Paperclip. Strict secret-reference mode is enabled. Local disk database backups are disabled because they would disappear on restart; backup/restore of Neon remains an operator responsibility. No migration override is enabled: a Neon schema with pending migrations can block startup and must be handled as a separately authorized operation.
+
+## Closed registration and first-admin bootstrap
+
+`PAPERCLIP_AUTH_DISABLE_SIGN_UP=true` is set in Wrangler and forwarded to the Container. Public email/password registration stays disabled throughout bootstrap and normal operation. Existing-account sign-in remains available. Never temporarily enable registration to create the first admin, and never switch the public Container to `local_trusted`.
+
+The existing bootstrap CLI creates a one-use **admin invitation**, not a user account. `/api/invites/:token/accept` requires an already authenticated human account before it can promote that account. A bootstrap link alone cannot register a user or bypass disabled sign-up.
+
+1. Verify that an individually approved human Better Auth account already exists and can sign in to this instance. If no such account exists, first-admin setup is **blocked** pending a separately reviewed, private operator account-provisioning procedure. This repository does not expose a closed-registration account-creation command; do not invent one or open registration as a workaround.
+2. In an authorized private operator session with the existing runtime database connection injected securely, use an authenticated Paperclip CLI config with sign-up disabled and the correct public base URL. Run `pnpm paperclipai auth bootstrap-ceo --expires-hours 1`. Do not use `--force` for initial bootstrap. The CLI refuses to issue another initial invite when an admin already exists.
+3. Deliver the generated invite link privately to the approved account owner. Treat the link as a credential; never put it or account passwords into CI logs, Git, tickets or this document. The owner signs in with their existing account and accepts the invitation before expiry.
+4. Verify the human account's `instance_admin` role and required company memberships. The consumed bootstrap invite cannot be accepted again. Subsequent human invites must be issued by the authorized board and accepted by pre-provisioned, signed-in accounts; human company joins follow the existing board approval flow.
+
+This is an operator procedure for a later authorized rollout. No account, invitation or admin-role change was made while preparing this PR. Account readiness and completed first-admin acceptance are release prerequisites, not facts established by the signup configuration test.
 
 ## Approved secret names
 
@@ -55,7 +68,7 @@ Neon stores application records; R2 stores uploads/attachments through the exist
 Use Node 22+ for Wrangler (CI uses Node 24):
 
 ```sh
-pnpm install --no-frozen-lockfile
+pnpm install --frozen-lockfile
 pnpm -r typecheck
 pnpm typecheck:paperclip-worker
 pnpm test:run
@@ -66,8 +79,8 @@ shellcheck scripts/deploy-quiknation-paperclip.sh
 
 The Worker check uses `--dry-run --containers-rollout=none`; it validates configuration and bundles the Worker without uploading or building the Container image. PR CI also builds the root Dockerfile without deploying. For a local image check on a host with Docker, run `docker build --tag quiknation-paperclip:review .`. Memory and env files are excluded from the Docker build context.
 
-`doc/DEVELOPING.md` prohibits lockfile changes in PRs. Keep local `pnpm-lock.yaml` changes unstaged. PR and deploy jobs resolve dependencies in their ephemeral checkout; the existing lockfile-refresh workflow owns committed lockfile updates.
+This rollout has an explicitly authorized exception to the default lockfile policy in `doc/DEVELOPING.md`. Commit its reviewed `pnpm-lock.yaml` dependency changes, and use frozen installs in PR and deploy jobs. Other branches retain the existing lockfile ownership policy. All `pnpm/action-setup` references are pinned to the verified upstream `v4.3.0` commit `b906affcce14559ad1aafd4ab0e942779e9f58b1`. Deployment pins `aws-actions/configure-aws-credentials` to the upstream `v4.3.1` commit `7474bc4690e29a8392af63c5b98e7449536d5c3a`; both were checked against their official Git refs and commit metadata.
 
-On 2026-10-06, the fork reported GitHub Actions disabled, no configured Actions variables and no environments. Docker is unavailable on QCS1. CI/image verification and production protection/configuration remain rollout blockers until the operator addresses them. No merge, workflow dispatch or deployment was performed during this preparation.
+On 2026-10-06, the fork reported GitHub Actions disabled, no configured Actions variables and no environments. The organization/repository owner must permit Actions and the pinned third-party action references under the existing action allowlist, supply the existing role/region/public-URL variables, and configure production environment protection. No organization Actions settings or IAM changes were made here. Docker is unavailable on QCS1, so CI/image verification also remains outstanding. First-admin account/bootstrap readiness, Neon schema readiness and existing token/IAM permission verification remain operator prerequisites. No merge, workflow dispatch or deployment was performed during this preparation.
 
 References: [Container class](https://developers.cloudflare.com/containers/api/container-class/) and [Wrangler configuration](https://developers.cloudflare.com/workers/wrangler/configuration/).
