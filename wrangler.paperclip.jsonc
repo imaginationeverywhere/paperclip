@@ -5,6 +5,9 @@
   "main": "cloudflare/paperclip/worker.ts",
   "compatibility_date": "2026-10-05",
   "workers_dev": true,
+  "routes": [
+    { "pattern": "paperclip.aiagentoffice.ai", "custom_domain": true }
+  ],
   "observability": { "enabled": true },
   "containers": [
     {
@@ -27,6 +30,7 @@
     "PAPERCLIP_DEPLOYMENT_EXPOSURE": "public",
     "PAPERCLIP_AUTH_BASE_URL_MODE": "explicit",
     "PAPERCLIP_AUTH_DISABLE_SIGN_UP": "true",
+    "PAPERCLIP_ALLOWED_HOSTNAMES": "paperclip.aiagentoffice.ai,quiknation-paperclip.withered-breeze-eaca.workers.dev",
     "PAPERCLIP_SECRETS_STRICT_MODE": "true",
     "PAPERCLIP_DB_BACKUP_ENABLED": "false",
     "PAPERCLIP_STORAGE_PROVIDER": "s3",
