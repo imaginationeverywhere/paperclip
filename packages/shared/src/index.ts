@@ -1,4 +1,5 @@
 export { agentAdapterTypeSchema, optionalAgentAdapterTypeSchema } from "./adapter-type.js";
+export { formatCloseOutComment, type CloseOutCommentInput } from "./close-out.js";
 export {
   COMPANY_STATUSES,
   DEPLOYMENT_MODES,
