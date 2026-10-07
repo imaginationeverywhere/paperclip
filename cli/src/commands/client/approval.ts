@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import {
   createApprovalSchema,
+  formatCloseOutComment,
   requestApprovalRevisionSchema,
   resolveApprovalSchema,
   resubmitApprovalSchema,
@@ -40,6 +41,13 @@ interface ApprovalResubmitOptions extends BaseClientOptions {
 
 interface ApprovalCommentOptions extends BaseClientOptions {
   body: string;
+}
+
+interface ApprovalCloseOutOptions extends BaseClientOptions {
+  did: string;
+  pr?: string;
+  headSha?: string;
+  left?: string;
 }
 
 export function registerApprovalCommands(program: Command): void {
@@ -111,7 +119,10 @@ export function registerApprovalCommands(program: Command): void {
       .command("create")
       .description("Create an approval request")
       .requiredOption("-C, --company-id <id>", "Company ID")
-      .requiredOption("--type <type>", "Approval type (hire_agent|approve_ceo_strategy)")
+      .requiredOption(
+        "--type <type>",
+        "Approval type (hire_agent|approve_ceo_strategy|budget_override_required|dispatch_agent)",
+      )
       .requiredOption("--payload <json>", "Approval payload as JSON object")
       .option("--requested-by-agent-id <id>", "Requesting agent ID")
       .option("--issue-ids <csv>", "Comma-separated linked issue IDs")
@@ -231,6 +242,36 @@ export function registerApprovalCommands(program: Command): void {
           const ctx = resolveCommandContext(opts);
           const created = await ctx.api.post<ApprovalComment>(`/api/approvals/${approvalId}/comments`, {
             body: opts.body,
+          });
+          printOutput(created, { json: ctx.json });
+        } catch (err) {
+          handleCommandError(err);
+        }
+      }),
+  );
+
+  addCommonClientOptions(
+    approval
+      .command("close-out")
+      .description(
+        "Post a structured session-end close-out comment (DID / PR + head SHA / LEFT) on an approval",
+      )
+      .argument("<approvalId>", "Approval ID")
+      .requiredOption("--did <text>", "What the agent did this session")
+      .option("--pr <url>", "PR url, if one was opened")
+      .option("--head-sha <sha>", "Exact head commit SHA the PR/work landed at")
+      .option("--left <text>", "What is still outstanding (omit if nothing is left)")
+      .action(async (approvalId: string, opts: ApprovalCloseOutOptions) => {
+        try {
+          const ctx = resolveCommandContext(opts);
+          const body = formatCloseOutComment({
+            did: opts.did,
+            prUrl: opts.pr,
+            headSha: opts.headSha,
+            left: opts.left,
+          });
+          const created = await ctx.api.post<ApprovalComment>(`/api/approvals/${approvalId}/comments`, {
+            body,
           });
           printOutput(created, { json: ctx.json });
         } catch (err) {
